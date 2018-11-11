@@ -1,6 +1,4 @@
 ---
-# todo config.txt
-
 - name: Remove leftovers
   file:
     path: "{{ item }}"
@@ -52,12 +50,8 @@
     chdir: /home/pi/shairport-sync
   become: yes
 
-# todo copy config file
-
 - systemd:
     name: shairport-sync
     enabled: yes
     state: started
   become: yes
-
-# todo what about sound board
