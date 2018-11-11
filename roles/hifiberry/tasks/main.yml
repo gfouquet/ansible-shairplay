@@ -1,0 +1,54 @@
+---
+- apt:
+    name: "{{ item }}"
+    state: latest
+  become: yes
+  loop:
+    - alsa-utils
+
+- lineinfile:
+    path: /boot/config.txt
+    line: "dtparam=audio=on"
+    state: absent
+  become: yes
+  register: boot_config
+
+- lineinfile:
+    path: /boot/config.txt
+    line: "dtoverlay=hifiberry-dacplus"
+    state: present
+  become: yes
+  register: boot_config_dac
+
+- copy:
+    src: asound.conf
+    dest: /etc/asound.conf
+    owner: root
+    group: root
+    mode: 0644
+  become: yes
+  register: alsa_config
+
+- set_fact:
+    reboot: "{{ (boot_config is changed) or (boot_config_dac is changed) or (alsa_config is changed) }}"
+
+- name: Reboot
+  shell: "sleep 5 && reboot"
+  async: 1
+  poll: 0
+  become: yes
+  when: reboot
+  tags:
+    - hostname
+    - expand_fs
+
+- name: Wait for the reboot to complete
+  wait_for_connection:
+    connect_timeout: 20
+    sleep: 5
+    delay: 5
+    timeout: 300
+  when: reboot
+  tags:
+    - hostname
+    - expand_fs

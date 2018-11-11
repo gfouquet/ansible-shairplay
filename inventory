@@ -1,0 +1,11 @@
+[all:vars]
+ansible_port=22
+ansible_user=pi
+
+gateway_ip_addr=192.168.1.1
+dns_ip_addr=192.168.1.1 8.8.8.8
+
+ssh_public_key=~/.ssh/id_rsa.pub
+
+[all]
+shairplay ansible_host=192.168.1.29

@@ -1,0 +1,16 @@
+---
+- hosts: all
+  remote_user: pi
+  tasks:
+    - import_role:
+        name: baseline
+      tags:
+        - baseline
+    - import_role:
+        name: hifiberry
+      tags:
+        - hifiberry
+    - import_role:
+        name: shairplay
+      tags:
+        - shairplay

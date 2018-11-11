@@ -1,0 +1,63 @@
+---
+# todo config.txt
+
+- name: Remove leftovers
+  file:
+    path: "{{ item }}"
+    state: absent
+  become: yes
+  loop:
+    - /usr/local/bin/shairport-sync
+    - /etc/systemd/system/shairport-sync.service
+    - /etc/init.d/shairport-sync
+
+- apt:
+    name: "{{ item }}"
+    state: latest
+  become: yes
+  loop:
+    - build-essential
+    - git
+    - xmltoman
+    - autoconf
+    - automake
+    - libtool
+    - libdaemon-dev
+    - libpopt-dev
+    - libconfig-dev
+    - libasound2-dev
+    - avahi-daemon
+    - libavahi-client-dev
+    - libssl-dev
+
+- git:
+    repo: https://github.com/mikebrady/shairport-sync.git
+    dest: /home/pi/shairport-sync
+
+- command: autoreconf -fi
+  args:
+    chdir: /home/pi/shairport-sync
+
+# todo check configure options
+- command: ./configure --sysconfdir=/etc --with-alsa --with-avahi --with-ssl=openssl –-with-metadata --with-systemd
+  args:
+    chdir: /home/pi/shairport-sync
+
+- command: make
+  args:
+    chdir: /home/pi/shairport-sync
+
+- command: make install
+  args:
+    chdir: /home/pi/shairport-sync
+  become: yes
+
+# todo copy config file
+
+- systemd:
+    name: shairport-sync
+    enabled: yes
+    state: started
+  become: yes
+
+# todo what about sound board

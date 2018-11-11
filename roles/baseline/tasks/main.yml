@@ -1,0 +1,116 @@
+---
+- name: Create ssh folder
+  file:
+    path: "~/.ssh"
+    state: directory
+    mode: 0700
+  tags:
+    - ssh
+
+- name: Set authorized ssh keys
+  template:
+    src: authorized_keys.j2
+    dest: "~/.ssh/authorized_keys"
+    mode: 0600
+  tags:
+    - ssh
+
+- name: Get hostname
+  command: "raspi-config nonint get_hostname"
+  become: yes
+  register: hostname
+  tags:
+    - hostname
+
+- set_fact:
+    change_hostname: "{{hostname.stdout != inventory_hostname}}"
+  tags:
+    - hostname
+
+- name: Set hostname
+  command: "raspi-config nonint do_hostname {{ inventory_hostname }}"
+  become: yes
+  when: change_hostname
+  tags:
+    - hostname
+
+- name: Get FS expand state
+  command: "raspi-config nonint get_can_expand"
+  become: yes
+  register: can_expand_fs
+  tags:
+    - expand_fs
+
+- set_fact:
+    expand_fs: "{{can_expand_fs.stdout != '0'}}"
+  tags:
+    - expand_fs
+
+- name: Set expanded FS
+  command: "raspi-config nonint do_expand_rootfs"
+  become: yes
+  when: expand_fs
+  tags:
+    - expand_fs
+
+
+- name: Configure static ip & network
+  template:
+    src: dhcpcd.conf.j2
+    dest: /etc/dhcpcd.conf
+    owner: root
+    group: netdev
+    mode: 0664
+  become: yes
+  register: dhcpcd
+  tags:
+    - static_ip
+
+- name: Restart dhcpcd
+  systemd:
+    daemon_reload: yes
+    name: dhcpcd
+    state: restarted
+  become: yes
+  when: dhcpcd is changed
+  tags:
+    - static_ip
+
+- name: Upgrade all packages
+  apt:
+    update_cache: yes
+    upgrade: yes
+    autoremove: yes
+    autoclean: yes
+  become: yes
+
+- name: Rpi Update
+  command: "rpi-update"
+  become: yes
+
+- set_fact:
+    reboot: "{{ (change_hostname | default(False)) or ( expand_fs | default(False) ) }}"
+  tags:
+    - hostname
+    - expand_fs
+
+- name: Reboot
+  shell: "sleep 5 && reboot"
+  async: 1
+  poll: 0
+  become: yes
+  when: reboot
+  tags:
+    - hostname
+    - expand_fs
+
+- name: Wait for the reboot to complete
+  wait_for_connection:
+    connect_timeout: 20
+    sleep: 5
+    delay: 5
+    timeout: 300
+  when: reboot
+  tags:
+    - hostname
+    - expand_fs
